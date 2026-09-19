@@ -1,0 +1,35 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Audit Logs{% endblock %}
+{% block topbar_title %}Audit Logs{% endblock %}
+{% block topbar_sub %}Tamper-evident record of all system and security events{% endblock %}
+{% block topbar_actions %}<span style="font-size:11px;color:var(--text-dim);border:1px solid var(--border);padding:3px 8px;border-radius:4px;">Append-only · Cryptographically signed</span>{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">System Audit Trail</span>
+    <form method="get" style="display:flex;gap:8px;">
+      <input class="input" name="q" value="{{ q }}" placeholder="Search logs…" style="width:200px;">
+      <select class="input" name="level" onchange="this.form.submit()" style="width:110px;">
+        <option value="" {% if not level %}selected{% endif %}>All Levels</option>
+        <option value="CRIT" {% if level == 'CRIT' %}selected{% endif %}>Critical</option>
+        <option value="WARN" {% if level == 'WARN' %}selected{% endif %}>Warning</option>
+        <option value="INFO" {% if level == 'INFO' %}selected{% endif %}>Info</option>
+        <option value="OK" {% if level == 'OK' %}selected{% endif %}>OK</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
+      {% if q or level %}<a href="{% url 'audit_logs' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+    </form>
+  </div>
+  <div class="card-body" style="max-height:600px;overflow-y:auto;">
+    {% for log in logs %}
+    <div class="log-line">
+      <div class="log-time">{{ log.timestamp|date:"H:i:s" }}</div>
+      <div class="log-level {% if log.level == 'CRIT' %}ll-crit{% elif log.level == 'WARN' %}ll-warn{% elif log.level == 'OK' %}ll-ok{% else %}ll-info{% endif %}">{{ log.level }}</div>
+      <div class="log-msg">{{ log.message }}</div>
+    </div>
+    {% empty %}
+    <div style="text-align:center;color:var(--text-dim);padding:32px">No audit log entries found.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

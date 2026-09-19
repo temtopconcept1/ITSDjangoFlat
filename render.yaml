@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: its-cloud-security
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn its_project.wsgi --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: RENDER
+        value: true
+      - key: PYTHON_VERSION
+        value: 3.11.0

@@ -1,0 +1,52 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Rate Limits{% endblock %}
+{% block topbar_title %}Rate Limiting{% endblock %}
+{% block topbar_sub %}Per-IP request throttling and threshold management{% endblock %}
+{% block content %}
+<div class="two-col">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Thresholds</span></div>
+    <div class="card-body">
+      <form method="post" action="{% url 'rate_limits_save' %}">
+        {% csrf_token %}
+        <div class="form-group"><label class="form-label">Max Requests Per Minute (per IP)</label><input class="form-input" name="rate_limit_rpm" type="number" value="{{ rpm }}" min="1" max="1000"></div>
+        <div class="form-group"><label class="form-label">Max Failed Logins Before Block</label><input class="form-input" name="max_failed_attempts" type="number" value="{{ max_fails }}" min="1" max="100"></div>
+        <div class="form-group"><label class="form-label">Lockout Duration (minutes)</label><input class="form-input" name="lockout_minutes" type="number" value="{{ lockout }}" min="1"></div>
+        <div class="form-group"><label class="form-label">Observation Window (seconds)</label><input class="form-input" name="rate_window_seconds" type="number" value="{{ window }}" min="10"></div>
+        <div class="form-group"><label class="form-label">Burst Allowance</label><input class="form-input" name="burst_allowance" type="number" value="{{ burst }}" min="0"></div>
+        <button class="btn btn-primary" type="submit">Save Thresholds</button>
+      </form>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Current Settings</span></div>
+    <div class="card-body">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Active rate limiting configuration:</div>
+      <div class="hbar-row"><div class="hbar-label">Req/Min Limit</div><div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--accent)"></div></div><div class="hbar-val c-blue">{{ rpm }}</div></div>
+      <div class="hbar-row"><div class="hbar-label">Max Failures</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ max_fails|default:5 }}0%;background:var(--red)"></div></div><div class="hbar-val c-red">{{ max_fails }}</div></div>
+      <div class="hbar-row"><div class="hbar-label">Lockout (min)</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ lockout|default:15 }}%;background:var(--yellow)"></div></div><div class="hbar-val c-yellow">{{ lockout }}</div></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+      <div style="font-size:11px;color:var(--text-dim);">All changes apply immediately to incoming requests.</div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header"><span class="card-title">Rate Limit Events</span></div>
+  <table>
+    <thead><tr><th>Time</th><th>IP Address</th><th>Req/Min</th><th>Limit</th><th>Response</th></tr></thead>
+    <tbody>
+    {% for e in rate_events %}
+    <tr>
+      <td>{{ e.timestamp|date:"H:i:s" }}</td>
+      <td><span class="mono">{{ e.ip_address }}</span></td>
+      <td class="c-red" style="font-weight:700">{{ e.details|slice:":2" }}</td>
+      <td>{{ rpm }}</td>
+      <td><span class="tag tag-yellow">{{ e.response }}</span></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:24px">No rate limit events recorded yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

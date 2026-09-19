@@ -1,0 +1,69 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Settings{% endblock %}
+{% block topbar_title %}Settings{% endblock %}
+{% block topbar_sub %}Security configuration and system parameters{% endblock %}
+{% block content %}
+<form method="post" action="{% url 'settings_save' %}">
+{% csrf_token %}
+<div class="two-col">
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><span class="card-title">Brute Force Protection</span></div>
+      <div class="card-body">
+        <div class="form-group"><label class="form-label">Max Failed Login Attempts</label><input class="form-input" name="max_failed_attempts" type="number" value="{{ s.max_failed_attempts }}" min="1" max="100"></div>
+        <div class="form-group"><label class="form-label">Detection Window (seconds)</label><input class="form-input" name="detection_window_seconds" type="number" value="{{ s.detection_window }}" min="60"></div>
+        <div class="form-group"><label class="form-label">Auto-Blacklist Duration (hours, 0 = permanent)</label><input class="form-input" name="blacklist_duration_hours" type="number" value="{{ s.blacklist_duration_hours }}" min="0"></div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Enable Brute Force Protection</div><div class="toggle-sub">Auto-block IPs exceeding failed login threshold</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="brute_force_enabled" {% if s.brute_force_enabled == 'true' %}checked{% endif %}><div class="toggle-track"></div></label>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Rate Limiting</span></div>
+      <div class="card-body">
+        <div class="form-group"><label class="form-label">Max Requests Per Minute</label><input class="form-input" name="rate_limit_rpm" type="number" value="{{ s.rate_limit_rpm }}" min="1"></div>
+        <div class="form-group"><label class="form-label">Burst Allowance</label><input class="form-input" name="burst_allowance" type="number" value="{{ s.burst_allowance }}" min="0"></div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Enable Rate Limiting</div><div class="toggle-sub">Throttle requests exceeding per-IP limits</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="rate_limit_enabled" {% if s.rate_limit_enabled == 'true' %}checked{% endif %}><div class="toggle-track"></div></label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><span class="card-title">Notifications & Alerts</span></div>
+      <div class="card-body">
+        <div class="toggle-row">
+          <div><div class="toggle-label">Email Alerts — Critical Events</div><div class="toggle-sub">Brute force, auto-blacklist actions</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="email_critical" {% if s.email_critical == 'true' %}checked{% endif %}><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Email Alerts — Warning Events</div><div class="toggle-sub">Rate limit triggers, suspicious activity</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="email_warning" {% if s.email_warning == 'true' %}checked{% endif %}><div class="toggle-track"></div></label>
+        </div>
+        <div class="form-group" style="margin-top:16px;"><label class="form-label">Alert Email Address</label><input class="form-input" name="alert_email" type="email" value="{{ s.alert_email }}"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Audit & Logging</span></div>
+      <div class="card-body">
+        <div class="toggle-row">
+          <div><div class="toggle-label">Enable Audit Logging</div><div class="toggle-sub">Append-only cryptographic log of all events</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="audit_enabled" {% if s.audit_enabled == 'true' %}checked{% endif %}><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Log All Login Attempts</div><div class="toggle-sub">Including successful authentications</div></div>
+          <label class="toggle-switch"><input type="checkbox" name="log_all_logins" {% if s.log_all_logins == 'true' %}checked{% endif %}><div class="toggle-track"></div></label>
+        </div>
+        <div class="form-group" style="margin-top:16px;"><label class="form-label">Log Retention (days)</label><input class="form-input" name="log_retention_days" type="number" value="{{ s.log_retention_days }}" min="1"></div>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:right;">
+      <button class="btn btn-primary" type="submit">Save All Changes</button>
+    </div>
+  </div>
+</div>
+</form>
+{% endblock %}

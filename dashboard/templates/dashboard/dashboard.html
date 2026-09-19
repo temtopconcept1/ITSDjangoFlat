@@ -1,0 +1,68 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}Security Dashboard{% endblock %}
+{% block topbar_sub %}Real-time intrusion monitoring · Last updated: just now{% endblock %}
+{% block topbar_actions %}<a href="#" class="btn btn-ghost btn-sm">Export Report</a>{% endblock %}
+{% block content %}
+<div class="stat-grid cols4">
+  <div class="stat-card"><div class="stat-label">Login Attempts (24h)</div><div class="stat-value c-blue">{{ total_attempts }}</div><div class="stat-meta c-dim">Last 24 hours</div></div>
+  <div class="stat-card"><div class="stat-label">Failed Logins</div><div class="stat-value c-red">{{ failed_attempts }}</div><div class="stat-meta c-red">Unsuccessful attempts</div></div>
+  <div class="stat-card"><div class="stat-label">IPs Blacklisted</div><div class="stat-value c-yellow">{{ blacklisted_count }}</div><div class="stat-meta c-dim">Currently blocked</div></div>
+  <div class="stat-card"><div class="stat-label">Active Sessions</div><div class="stat-value c-green">{{ active_sessions }}</div><div class="stat-meta c-dim">Authenticated users</div></div>
+</div>
+<div class="chart-row">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Login Attempts — Last 7 Days</span></div>
+    <div class="card-body">
+      <div class="bar-chart" id="bar-chart"></div>
+      <div class="chart-legend">
+        <div class="legend-dot"><div class="dot" style="background:var(--accent)"></div>Successful</div>
+        <div class="legend-dot"><div class="dot" style="background:var(--red)"></div>Failed / Blocked</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Threat Breakdown</span></div>
+    <div class="card-body">
+      <div class="hbar-row"><div class="hbar-label">Brute Force</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ brute_pct }}%;background:var(--red)"></div></div><div class="hbar-val c-red">{{ brute_pct }}%</div></div>
+      <div class="hbar-row"><div class="hbar-label">Rate Exceeded</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ rate_pct }}%;background:var(--yellow)"></div></div><div class="hbar-val c-yellow">{{ rate_pct }}%</div></div>
+      <div class="hbar-row"><div class="hbar-label">Other</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ other_pct }}%;background:var(--accent)"></div></div><div class="hbar-val c-blue">{{ other_pct }}%</div></div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header"><span class="card-title">Recent Security Events</span><a href="{% url 'events' %}" class="btn btn-ghost btn-sm">View All</a></div>
+  <table>
+    <thead><tr><th>Time</th><th>Event Type</th><th>Source IP</th><th>Severity</th><th>Response</th></tr></thead>
+    <tbody>
+    {% for e in recent_events %}
+    <tr>
+      <td>{{ e.timestamp|date:"H:i:s" }}</td>
+      <td>{{ e.event_type }}</td>
+      <td><span class="mono">{{ e.ip_address }}</span></td>
+      <td>{% if e.severity == 'CRITICAL' %}<span class="tag tag-red">CRITICAL</span>{% elif e.severity == 'WARNING' %}<span class="tag tag-yellow">WARNING</span>{% else %}<span class="tag tag-blue">INFO</span>{% endif %}</td>
+      <td><span class="tag tag-gray">{{ e.response }}</span></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:24px">No security events recorded yet. System is monitoring.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+const chartData = {{ chart_data|safe }};
+const el = document.getElementById('bar-chart');
+const maxVal = Math.max(...chartData.map(d=>d.ok+d.fail), 1);
+el.innerHTML = chartData.map(d=>{
+  const okH = Math.round((d.ok/maxVal)*110);
+  const failH = Math.round((d.fail/maxVal)*110);
+  return `<div class="bar-col">
+    <div style="display:flex;align-items:flex-end;gap:2px;height:110px;">
+      <div style="height:${okH}px;flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px"></div>
+      <div style="height:${failH}px;flex:1;background:var(--red);border-radius:3px 3px 0 0;min-height:2px"></div>
+    </div>
+    <div class="bar-lbl">${d.day}</div>
+  </div>`;
+}).join('');
+</script>
+{% endblock %}

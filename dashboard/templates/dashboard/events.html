@@ -1,0 +1,44 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Security Events{% endblock %}
+{% block topbar_title %}Security Events{% endblock %}
+{% block topbar_sub %}Intrusion attempts, anomalies and automated responses{% endblock %}
+{% block content %}
+{% for a in alerts %}
+<div class="alert {% if a.severity == 'CRITICAL' %}alert-crit{% else %}alert-warn{% endif %}">
+  <div class="alert-title" style="color:{% if a.severity == 'CRITICAL' %}var(--red){% else %}var(--yellow){% endif %}">
+    {% if a.severity == 'CRITICAL' %}🔴{% else %}🟡{% endif %} {{ a.severity }} — {{ a.event_type }} from {{ a.ip_address }}
+  </div>
+  <div class="alert-body">{{ a.details }} · Response: {{ a.response }}</div>
+</div>
+{% endfor %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Event Timeline</span>
+    <form method="get" style="display:flex;gap:8px;">
+      <select class="input" name="sev" onchange="this.form.submit()" style="width:140px;">
+        <option value="" {% if not sev %}selected{% endif %}>All Severities</option>
+        <option value="CRITICAL" {% if sev == 'CRITICAL' %}selected{% endif %}>Critical</option>
+        <option value="WARNING" {% if sev == 'WARNING' %}selected{% endif %}>Warning</option>
+        <option value="INFO" {% if sev == 'INFO' %}selected{% endif %}>Info</option>
+      </select>
+    </form>
+  </div>
+  <table>
+    <thead><tr><th>Time</th><th>Event Type</th><th>Source IP</th><th>Details</th><th>Severity</th><th>Response</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+    <tr>
+      <td>{{ e.timestamp|date:"H:i:s" }}</td>
+      <td>{{ e.event_type }}</td>
+      <td><span class="mono">{{ e.ip_address }}</span></td>
+      <td style="max-width:260px">{{ e.details }}</td>
+      <td>{% if e.severity == 'CRITICAL' %}<span class="tag tag-red">CRITICAL</span>{% elif e.severity == 'WARNING' %}<span class="tag tag-yellow">WARNING</span>{% else %}<span class="tag tag-blue">INFO</span>{% endif %}</td>
+      <td><span class="tag tag-gray">{{ e.response }}</span></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">No security events recorded yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Login Logs{% endblock %}
+{% block topbar_title %}Login Logs{% endblock %}
+{% block topbar_sub %}Full authentication history with status and source tracking{% endblock %}
+{% block topbar_actions %}<a href="?export=csv" class="btn btn-primary btn-sm">Export CSV</a>{% endblock %}
+{% block content %}
+<div class="stat-grid cols3">
+  <div class="stat-card"><div class="stat-label">Total Attempts (24h)</div><div class="stat-value c-blue">{{ total_24h }}</div></div>
+  <div class="stat-card"><div class="stat-label">Failed Attempts</div><div class="stat-value c-red">{{ failed_24h }}</div></div>
+  <div class="stat-card"><div class="stat-label">Unique Source IPs</div><div class="stat-value c-yellow">{{ unique_ips }}</div></div>
+</div>
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Authentication Log</span>
+    <form method="get" style="display:flex;gap:8px;">
+      <input class="input" name="q" value="{{ q }}" placeholder="Search IP or username…" style="width:200px;">
+      <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+      {% if q %}<a href="{% url 'login_logs' %}" class="btn btn-ghost btn-sm">Clear</a>{% endif %}
+    </form>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Timestamp</th><th>Username</th><th>Source IP</th><th>Status</th><th>Attempts</th><th>Action Taken</th></tr></thead>
+    <tbody>
+    {% for log in logs %}
+    <tr>
+      <td class="c-dim">{{ log.id }}</td>
+      <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+      <td>{{ log.username }}</td>
+      <td><span class="mono">{{ log.ip_address }}</span></td>
+      <td>{% if log.status == 'SUCCESS' %}<span class="tag tag-green">SUCCESS</span>{% else %}<span class="tag tag-red">FAILED</span>{% endif %}</td>
+      <td style="font-weight:{% if log.attempts_from_ip >= 8 %}700{% else %}400{% endif %};color:{% if log.attempts_from_ip >= 8 %}var(--red){% elif log.attempts_from_ip >= 4 %}var(--yellow){% else %}var(--text){% endif %}">{{ log.attempts_from_ip }}</td>
+      <td>
+        {% if log.action == 'BLACKLISTED' %}<span class="tag tag-red">IP Blacklisted</span>
+        {% elif log.action == 'RATE_LIMITED' %}<span class="tag tag-yellow">Rate Limited</span>
+        {% elif log.action == 'FLAGGED' %}<span class="tag tag-yellow">Flagged</span>
+        {% elif log.action == 'ALLOWED' %}<span class="tag tag-green">Allowed</span>
+        {% else %}<span class="tag tag-gray">Monitored</span>{% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:24px">No login attempts recorded yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
