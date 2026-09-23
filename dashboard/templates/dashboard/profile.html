@@ -1,0 +1,104 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}My Profile{% endblock %}
+{% block topbar_title %}My Profile{% endblock %}
+{% block topbar_sub %}Manage your account details and security settings{% endblock %}
+{% block content %}
+
+{% if pw_error %}
+<div class="alert alert-crit" style="margin-bottom:16px;">
+  <div class="alert-title c-red">Password Error</div>
+  <div class="alert-body">{{ pw_error }}</div>
+</div>
+{% endif %}
+
+<div class="two-col">
+  <!-- Profile Info -->
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><span class="card-title">Account Information</span></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+          <div style="width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;">{{ profile.initials }}</div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-hi);">{{ request.user.get_full_name|default:request.user.username }}</div>
+            <div style="font-size:12px;color:var(--text-dim);">{{ request.user.email }}</div>
+            <div style="margin-top:4px;">
+              {% if profile.role == 'ADMIN' %}<span class="tag tag-blue">Administrator</span>
+              {% elif profile.role == 'ANALYST' %}<span class="tag tag-purple">Security Analyst</span>
+              {% else %}<span class="tag tag-gray">Viewer</span>{% endif %}
+              {% if profile.status == 'ACTIVE' %}<span class="tag tag-green" style="margin-left:4px;">Active</span>
+              {% else %}<span class="tag tag-red" style="margin-left:4px;">{{ profile.status }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        <form method="post" action="{% url 'profile_save' %}">
+          {% csrf_token %}
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" name="first_name" value="{{ request.user.first_name }}" type="text"></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" name="last_name" value="{{ request.user.last_name }}" type="text"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" name="email" value="{{ request.user.email }}" type="email"></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" name="phone" value="{{ profile.phone }}" type="text" placeholder="+234 xxx xxx xxxx"></div>
+          <div class="form-group"><label class="form-label">Department</label><input class="form-input" name="department" value="{{ profile.department }}" type="text"></div>
+          <div class="form-group"><label class="form-label">Bio</label><textarea class="form-input" name="bio" rows="3" placeholder="Brief description...">{{ profile.bio }}</textarea></div>
+          <button class="btn btn-primary" type="submit">Save Changes</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Known IPs -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Known IP Addresses</span></div>
+      <div class="card-body">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">All IP addresses you have previously logged in from.</div>
+        {% for ip in profile.get_known_ips %}
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+          <span style="color:var(--green);font-size:12px;">●</span>
+          <span class="mono">{{ ip }}</span>
+          <span class="tag tag-green" style="margin-left:auto;">Trusted</span>
+        </div>
+        {% empty %}
+        <div style="color:var(--text-dim);font-size:12px;">No IPs recorded yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Security -->
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><span class="card-title">Change Password</span></div>
+      <div class="card-body">
+        <form method="post" action="{% url 'change_password' %}">
+          {% csrf_token %}
+          <div class="form-group"><label class="form-label">Current Password</label><input class="form-input" name="old_password" type="password" required></div>
+          <div class="form-group"><label class="form-label">New Password</label><input class="form-input" name="new_password" type="password" required placeholder="Min 8 characters"></div>
+          <div class="form-group"><label class="form-label">Confirm New Password</label><input class="form-input" name="confirm_password" type="password" required></div>
+          <button class="btn btn-primary" type="submit">Update Password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Login History -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Recent Login Sessions</span></div>
+      <div class="card-body p0">
+        <table>
+          <thead><tr><th>Date / Time</th><th>IP Address</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for s in sessions %}
+          <tr>
+            <td style="font-size:11px;">{{ s.created_at|date:"d M Y H:i" }}</td>
+            <td><span class="mono">{{ s.ip_address }}</span>{% if s.is_new_ip %} <span class="tag tag-yellow" style="font-size:9px;">NEW</span>{% endif %}</td>
+            <td>{% if s.is_active %}<span class="tag tag-green">Active</span>{% else %}<span class="tag tag-gray">Ended</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:20px;">No sessions recorded.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

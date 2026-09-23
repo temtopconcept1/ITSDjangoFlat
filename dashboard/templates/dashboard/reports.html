@@ -1,0 +1,98 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Reports{% endblock %}
+{% block topbar_title %}Reports & Exports{% endblock %}
+{% block topbar_sub %}Generate and download security reports{% endblock %}
+{% block content %}
+
+<div class="stat-grid cols4" style="margin-bottom:24px;">
+  <div class="stat-card s-blue"><div class="stat-label">Total Logins (7d)</div><div class="stat-value c-blue">{{ total_logins }}</div></div>
+  <div class="stat-card s-red"><div class="stat-label">Failed Logins (7d)</div><div class="stat-value c-red">{{ failed_logins }}</div></div>
+  <div class="stat-card s-yellow"><div class="stat-label">Security Events (7d)</div><div class="stat-value c-yellow">{{ total_events }}</div></div>
+  <div class="stat-card s-red"><div class="stat-label">Critical Events (7d)</div><div class="stat-value c-red">{{ critical_events }}</div></div>
+</div>
+
+<div class="two-col">
+  <!-- PDF Report -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">📄 PDF Security Report</span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:16px;">
+        Generate a full PDF security report including weekly summary statistics, recent security events, blacklisted IPs, and system health overview.
+      </p>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">Report Contents</div>
+        <div style="font-size:12px;color:var(--text);line-height:2;">
+          ✅ Weekly login summary<br>
+          ✅ Failed attempt breakdown<br>
+          ✅ Active blacklist snapshot<br>
+          ✅ Recent security events (last 15)<br>
+          ✅ User activity summary<br>
+          ✅ New IP login alerts
+        </div>
+      </div>
+      <a href="{% url 'export_pdf' %}" class="btn btn-primary">⬇ Download PDF Report</a>
+    </div>
+  </div>
+
+  <!-- CSV Exports -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">📊 CSV Data Exports</span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:16px;">
+        Export raw data tables as CSV files for use in Excel, Google Sheets, or external SIEM platforms.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+          <div>
+            <div style="font-weight:600;font-size:13px;color:var(--text-hi);">Login Logs</div>
+            <div style="font-size:11px;color:var(--text-dim);">All authentication attempts</div>
+          </div>
+          <a href="{% url 'export_csv' 'login_logs' %}" class="btn btn-ghost btn-sm">⬇ CSV</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+          <div>
+            <div style="font-weight:600;font-size:13px;color:var(--text-hi);">Blacklisted IPs</div>
+            <div style="font-size:11px;color:var(--text-dim);">All blocked IP addresses</div>
+          </div>
+          <a href="{% url 'export_csv' 'blacklist' %}" class="btn btn-ghost btn-sm">⬇ CSV</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+          <div>
+            <div style="font-weight:600;font-size:13px;color:var(--text-hi);">Security Events</div>
+            <div style="font-size:11px;color:var(--text-dim);">All detected incidents</div>
+          </div>
+          <a href="{% url 'export_csv' 'events' %}" class="btn btn-ghost btn-sm">⬇ CSV</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+          <div>
+            <div style="font-weight:600;font-size:13px;color:var(--text-hi);">Audit Trail</div>
+            <div style="font-size:11px;color:var(--text-dim);">Full system audit log</div>
+          </div>
+          <a href="{% url 'export_csv' 'audit' %}" class="btn btn-ghost btn-sm">⬇ CSV</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick stats -->
+<div class="card">
+  <div class="card-header"><span class="card-title">Security Summary (Last 7 Days)</span></div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      <div style="text-align:center;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <div style="font-size:28px;font-weight:700;color:var(--green);">{{ active_users }}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;">Active Users</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <div style="font-size:28px;font-weight:700;color:var(--red);">{{ blacklisted }}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;">Blacklisted IPs</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <div style="font-size:28px;font-weight:700;color:var(--yellow);">{{ new_ips }}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;">New IP Alerts</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

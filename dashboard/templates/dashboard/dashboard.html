@@ -1,53 +1,115 @@
 {% extends 'dashboard/base.html' %}
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Security Dashboard{% endblock %}
-{% block topbar_sub %}Real-time intrusion monitoring · Last updated: just now{% endblock %}
-{% block topbar_actions %}<a href="#" class="btn btn-ghost btn-sm">Export Report</a>{% endblock %}
+{% block topbar_sub %}Real-time intrusion monitoring · Auto-refreshes every 30 seconds{% endblock %}
+{% block topbar_actions %}
+  {% if pending_users %}<a href="{% url 'user_list' %}?status=PENDING" class="btn btn-warning btn-sm">⚠ {{ pending_users }} Pending Approval</a>{% endif %}
+  <a href="{% url 'reports' %}" class="btn btn-ghost btn-sm">📄 Reports</a>
+{% endblock %}
 {% block content %}
-<div class="stat-grid cols4">
-  <div class="stat-card"><div class="stat-label">Total Login Attempts</div><div class="stat-value c-blue">{{ total_attempts }}</div><div class="stat-meta c-green">↑ 12% this week</div></div>
-  <div class="stat-card"><div class="stat-label">Failed Logins</div><div class="stat-value c-red">{{ failed_attempts }}</div><div class="stat-meta c-red">↑ 8% vs yesterday</div></div>
-  <div class="stat-card"><div class="stat-label">IPs Blacklisted</div><div class="stat-value c-yellow">{{ blacklisted_count }}</div><div class="stat-meta c-red">+3 in last hour</div></div>
-  <div class="stat-card"><div class="stat-label">Active Sessions</div><div class="stat-value c-green">{{ active_sessions }}</div><div class="stat-meta c-dim">stable</div></div>
+
+<div class="stat-grid cols5">
+  <div class="stat-card s-blue">
+    <div class="stat-label">Login Attempts (24h)</div>
+    <div class="stat-value c-blue" id="s-total">{{ total_attempts }}</div>
+    <div class="stat-meta c-dim">Last 24 hours</div>
+  </div>
+  <div class="stat-card s-red">
+    <div class="stat-label">Failed Logins</div>
+    <div class="stat-value c-red" id="s-failed">{{ failed_attempts }}</div>
+    <div class="stat-meta c-red">Unsuccessful attempts</div>
+  </div>
+  <div class="stat-card s-yellow">
+    <div class="stat-label">IPs Blacklisted</div>
+    <div class="stat-value c-yellow" id="s-blocked">{{ blacklisted_count }}</div>
+    <div class="stat-meta c-dim">Currently blocked</div>
+  </div>
+  <div class="stat-card s-green">
+    <div class="stat-label">Active Sessions</div>
+    <div class="stat-value c-green" id="s-sessions">{{ active_sessions }}</div>
+    <div class="stat-meta c-dim">Logged-in users</div>
+  </div>
+  <div class="stat-card s-purple">
+    <div class="stat-label">Pending Users</div>
+    <div class="stat-value c-purple" id="s-pending">{{ pending_users }}</div>
+    <div class="stat-meta {% if pending_users %}c-yellow{% else %}c-dim{% endif %}">
+      {% if pending_users %}Awaiting approval{% else %}None pending{% endif %}
+    </div>
+  </div>
 </div>
 
 <div class="chart-row">
   <div class="card">
-    <div class="card-header"><span class="card-title">Login Attempts — Last 7 Days</span></div>
-    <div class="card-body">
-      <canvas id="bar-chart" style="width:100%;height:160px;display:block;"></canvas>
-      <div class="chart-legend" style="margin-top:12px;">
+    <div class="card-header">
+      <span class="card-title">Login Attempts — Last 7 Days</span>
+      <div class="chart-legend">
         <div class="legend-dot"><div class="dot" style="background:#3b82f6"></div>Successful</div>
         <div class="legend-dot"><div class="dot" style="background:#ef4444"></div>Failed / Blocked</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="position:relative;height:180px;">
+        <canvas id="loginChart"></canvas>
       </div>
     </div>
   </div>
   <div class="card">
     <div class="card-header"><span class="card-title">Threat Breakdown</span></div>
     <div class="card-body">
-      <div class="hbar-row"><div class="hbar-label">Brute Force</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ brute_pct }}%;background:var(--red)"></div></div><div class="hbar-val c-red">{{ brute_pct }}%</div></div>
-      <div class="hbar-row"><div class="hbar-label">Rate Exceeded</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ rate_pct }}%;background:var(--yellow)"></div></div><div class="hbar-val c-yellow">{{ rate_pct }}%</div></div>
-      <div class="hbar-row"><div class="hbar-label">Unknown IP</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ other_pct }}%;background:var(--accent)"></div></div><div class="hbar-val c-blue">{{ other_pct }}%</div></div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">Security Events (7 days)</div>
+      <div class="hbar-row">
+        <div class="hbar-label">Brute Force</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:{{ brute_pct }}%;background:var(--red)"></div></div>
+        <div class="hbar-val c-red">{{ brute_pct }}%</div>
+      </div>
+      <div class="hbar-row">
+        <div class="hbar-label">Rate Exceeded</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:{{ rate_pct }}%;background:var(--yellow)"></div></div>
+        <div class="hbar-val c-yellow">{{ rate_pct }}%</div>
+      </div>
+      <div class="hbar-row">
+        <div class="hbar-label">Other</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:{{ other_pct }}%;background:var(--accent)"></div></div>
+        <div class="hbar-val c-blue">{{ other_pct }}%</div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0 14px">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">BFT Replica Health</div>
+      <div class="hbar-row"><div class="hbar-label">Replica 1 (Ubuntu)</div><div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--green)"></div></div><div class="hbar-val c-green">OK</div></div>
+      <div class="hbar-row"><div class="hbar-label">Replica 2 (CentOS)</div><div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--green)"></div></div><div class="hbar-val c-green">OK</div></div>
+      <div class="hbar-row"><div class="hbar-label">Replica 3 (Debian)</div><div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--green)"></div></div><div class="hbar-val c-green">OK</div></div>
+      <div class="hbar-row"><div class="hbar-label">Replica 4 (Ubuntu)</div><div class="hbar-track"><div class="hbar-fill" style="width:65%;background:var(--yellow)"></div></div><div class="hbar-val c-yellow">Recovery</div></div>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-header"><span class="card-title">Recent Security Events</span><a href="{% url 'events' %}" class="btn btn-ghost btn-sm">View All</a></div>
+  <div class="card-header">
+    <span class="card-title">Recent Security Events</span>
+    <a href="{% url 'events' %}" class="btn btn-ghost btn-sm">View All</a>
+  </div>
   <table>
-    <thead><tr><th>Time</th><th>Event</th><th>Source IP</th><th>User</th><th>Severity</th><th>Status</th></tr></thead>
+    <thead><tr><th>Time</th><th>Event Type</th><th>Source IP</th><th>User</th><th>Severity</th><th>Response</th></tr></thead>
     <tbody>
     {% for e in recent_events %}
     <tr>
       <td>{{ e.timestamp|date:"H:i:s" }}</td>
       <td>{{ e.event_type }}</td>
       <td><span class="mono">{{ e.ip_address }}</span></td>
-      <td>—</td>
-      <td>{% if e.severity == 'CRITICAL' %}<span class="tag tag-red">CRITICAL</span>{% elif e.severity == 'WARNING' %}<span class="tag tag-yellow">WARNING</span>{% else %}<span class="tag tag-blue">INFO</span>{% endif %}</td>
-      <td>{% if e.response == 'Auto-Blacklisted' or e.response == 'Blocked' %}<span class="tag tag-red">{{ e.response }}</span>{% elif e.response == 'Throttled' or e.response == 'Flagged' %}<span class="tag tag-yellow">{{ e.response }}</span>{% elif e.response == 'Allowed' %}<span class="tag tag-green">OK</span>{% else %}<span class="tag tag-gray">{{ e.response }}</span>{% endif %}</td>
+      <td>{% if e.user %}{{ e.user.username }}{% else %}—{% endif %}</td>
+      <td>
+        {% if e.severity == 'CRITICAL' %}<span class="tag tag-red">CRITICAL</span>
+        {% elif e.severity == 'WARNING' %}<span class="tag tag-yellow">WARNING</span>
+        {% else %}<span class="tag tag-blue">INFO</span>{% endif %}
+      </td>
+      <td>
+        {% if e.response == 'Auto-Blacklisted' or e.response == 'Blocked' %}<span class="tag tag-red">{{ e.response }}</span>
+        {% elif e.response == 'Throttled' or e.response == 'Flagged' %}<span class="tag tag-yellow">{{ e.response }}</span>
+        {% elif e.response == 'Allowed' or e.response == 'Account Activated' %}<span class="tag tag-green">{{ e.response }}</span>
+        {% else %}<span class="tag tag-gray">{{ e.response }}</span>{% endif %}
+      </td>
     </tr>
     {% empty %}
-    <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">No security events recorded yet.</td></tr>
+    <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:28px">No security events yet. System is actively monitoring.</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -55,75 +117,104 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-const dbData  = {{ chart_data|safe }};
+// ── CHART ─────────────────────────────────────────────────────────
+let loginChart = null;
 
-// Per-day totals from DB — fall back to demo values if DB is empty
-const demoTotal = [100, 140,  83, 186, 184, 154, 177];
-const demoFail  = [ 22,  38,  18,  52,  96,  44,  57];
+async function loadChart() {
+  const res  = await fetch('/api/chart/');
+  const json = await res.json();
+  const data = json.data;
 
-const labels    = dbData.map(d => d.day);
-const totalData = dbData.map((d, i) => (d.ok + d.fail) > 0 ? (d.ok + d.fail) : demoTotal[i]);
-const failData  = dbData.map((d, i) => d.fail > 0        ? d.fail             : demoFail[i]);
+  // Fallback demo data when DB is empty
+  const demoOk   = [78, 102, 65, 134, 88, 110, 120];
+  const demoFail = [22,  38, 18,  52, 96,  44,  57];
 
-// Each bar is blue by default; highlight the day with most failures red
-const maxFail     = Math.max(...failData);
-const barColors   = failData.map(f => f === maxFail ? 'rgba(239,68,68,0.88)' : 'rgba(59,130,246,0.85)');
-const hoverColors = failData.map(f => f === maxFail ? 'rgba(239,68,68,1)'    : 'rgba(59,130,246,1)');
+  const labels   = data.map(d => d.day);
+  const okData   = data.map((d,i) => d.ok   > 0 ? d.ok   : demoOk[i]);
+  const failData = data.map((d,i) => d.fail > 0 ? d.fail : demoFail[i]);
 
-const ctx = document.getElementById('bar-chart').getContext('2d');
-new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: labels,
-    datasets: [{
-      label: 'Login Attempts',
-      data: totalData,
-      backgroundColor: barColors,
-      hoverBackgroundColor: hoverColors,
-      borderRadius: 4,
-      borderSkipped: false,
-      barPercentage: 0.65,
-      categoryPercentage: 0.8,
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#1a2236',
-        borderColor: '#1f2d45',
-        borderWidth: 1,
-        titleColor: '#e8edf8',
-        bodyColor: '#c8d3e8',
-        padding: 10,
-        callbacks: {
-          label: (ctx) => {
-            const idx = ctx.dataIndex;
-            return [
-              ` Total: ${totalData[idx]}`,
-              ` Failed: ${failData[idx]}`,
-              ` Successful: ${totalData[idx] - failData[idx]}`
-            ];
+  const ctx = document.getElementById('loginChart').getContext('2d');
+
+  if (loginChart) loginChart.destroy();
+
+  loginChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Successful',
+          data: okData,
+          backgroundColor: 'rgba(59,130,246,0.85)',
+          hoverBackgroundColor: 'rgba(59,130,246,1)',
+          borderRadius: 4,
+          borderSkipped: false,
+          barPercentage: 0.6,
+          categoryPercentage: 0.75,
+        },
+        {
+          label: 'Failed / Blocked',
+          data: failData,
+          backgroundColor: 'rgba(239,68,68,0.85)',
+          hoverBackgroundColor: 'rgba(239,68,68,1)',
+          borderRadius: 4,
+          borderSkipped: false,
+          barPercentage: 0.6,
+          categoryPercentage: 0.75,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a2236',
+          borderColor: '#1f2d45',
+          borderWidth: 1,
+          titleColor: '#e8edf8',
+          bodyColor: '#c8d3e8',
+          padding: 10,
+          callbacks: {
+            title: (items) => data[items[0].dataIndex]?.date || items[0].label,
           }
         }
-      }
-    },
-    scales: {
-      x: {
-        grid: { color: 'rgba(31,45,69,0.5)', drawBorder: false },
-        ticks: { color: '#6b7a99', font: { size: 11 } },
-        border: { display: false }
       },
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(31,45,69,0.5)', drawBorder: false },
-        ticks: { color: '#6b7a99', font: { size: 11 }, maxTicksLimit: 5 },
-        border: { display: false }
+      scales: {
+        x: {
+          grid: { color: 'rgba(31,45,69,0.5)', drawBorder: false },
+          ticks: { color: '#6b7a99', font: { size: 11 } },
+          border: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(31,45,69,0.5)', drawBorder: false },
+          ticks: { color: '#6b7a99', font: { size: 11 }, maxTicksLimit: 5, precision: 0 },
+          border: { display: false }
+        }
       }
     }
-  }
-});
+  });
+}
+
+// ── LIVE STAT REFRESH ─────────────────────────────────────────────
+async function refreshStats() {
+  try {
+    const res  = await fetch('/api/stats/');
+    const data = await res.json();
+    document.getElementById('s-total').textContent   = data.total_attempts.toLocaleString();
+    document.getElementById('s-failed').textContent  = data.failed_attempts.toLocaleString();
+    document.getElementById('s-blocked').textContent = data.blacklisted_count.toLocaleString();
+    document.getElementById('s-sessions').textContent= data.active_sessions.toLocaleString();
+    document.getElementById('s-pending').textContent = data.pending_users.toLocaleString();
+    // Reload chart every refresh too
+    await loadChart();
+  } catch(e) { console.warn('Stats refresh failed', e); }
+}
+
+loadChart();
+setInterval(refreshStats, 30000);
 </script>
 {% endblock %}

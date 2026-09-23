@@ -1,63 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In — IntrusionTolerant System</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0b0f1a;--surface:#111827;--border:#1f2d45;--text-dim:#6b7a99;--text:#c8d3e8;--text-hi:#e8edf8;--accent:#3b82f6;--accent2:#1d4ed8;--red:#ef4444;--red-bg:#1c0a0a;}
-body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;min-height:100vh;display:flex}
-.login-left{flex:1;background:linear-gradient(145deg,#0b0f1a 0%,#0d1e3a 100%);padding:60px 56px;display:flex;flex-direction:column;justify-content:center}
-.login-logo{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:36px}
-.login-headline{font-size:42px;font-weight:700;color:var(--text-hi);line-height:1.15;margin-bottom:16px}
-.login-headline span{color:var(--accent)}
-.login-desc{font-size:14px;color:var(--text-dim);max-width:380px;line-height:1.65;margin-bottom:32px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{background:#0d1e3a;border:1px solid #1e3a6e;color:#93c5fd;font-size:12px;padding:5px 12px;border-radius:16px}
-.login-right{width:400px;flex-shrink:0;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:48px 40px}
-.login-card{width:100%}
-.login-card h2{font-size:20px;font-weight:700;color:var(--text-hi);margin-bottom:4px}
-.login-card p{font-size:12px;color:var(--text-dim);margin-bottom:28px}
-.lbl{display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px}
-.inp{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-size:14px;font-family:inherit;margin-bottom:14px;outline:none;transition:border-color .15s}
-.inp:focus{border-color:var(--accent)}
-.login-btn{width:100%;background:var(--accent);color:white;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:4px}
-.login-btn:hover{background:var(--accent2)}
-.err{background:var(--red-bg);border:1px solid #3d1010;color:var(--red);padding:10px 13px;border-radius:6px;font-size:12px;margin-top:12px}
-.notice{margin-top:20px;font-size:11px;color:var(--text-dim);text-align:center;line-height:1.7}
-@media(max-width:700px){.login-left{display:none}.login-right{width:100%;padding:32px 24px}}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;min-height:100vh;display:flex;}
+.login-left{flex:1;background:linear-gradient(145deg,#0b0f1a 0%,#0d1e3a 100%);padding:60px 56px;display:flex;flex-direction:column;justify-content:center;}
+.logo{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:36px;}
+.headline{font-size:42px;font-weight:700;color:var(--text-hi);line-height:1.15;margin-bottom:16px;}
+.headline span{color:var(--accent);}
+.desc{font-size:14px;color:var(--text-dim);max-width:380px;line-height:1.65;margin-bottom:32px;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{background:#0d1e3a;border:1px solid #1e3a6e;color:#93c5fd;font-size:12px;padding:5px 12px;border-radius:16px;}
+.login-right{width:400px;flex-shrink:0;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:48px 40px;}
+.card{width:100%;}
+.card h2{font-size:20px;font-weight:700;color:var(--text-hi);margin-bottom:4px;}
+.card p{font-size:12px;color:var(--text-dim);margin-bottom:28px;}
+.lbl{display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+.inp{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-size:14px;font-family:inherit;margin-bottom:14px;outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--accent);}
+.btn{width:100%;background:var(--accent);color:white;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:4px;}
+.btn:hover{background:var(--accent2);}
+.err{background:var(--red-bg);border:1px solid #3d1010;color:var(--red);padding:10px 13px;border-radius:6px;font-size:12px;margin-bottom:16px;}
+.notice{margin-top:18px;font-size:11px;color:var(--text-dim);text-align:center;line-height:1.7;}
+.reg-link{text-align:center;margin-top:16px;font-size:12px;color:var(--text-dim);}
+.reg-link a{color:var(--accent);text-decoration:none;font-weight:600;}
+@media(max-width:700px){.login-left{display:none;}.login-right{width:100%;padding:32px 24px;}}
 </style>
 </head>
 <body>
 <div class="login-left">
-  <div class="login-logo">🛡 IntrusionTolerant System</div>
-  <div class="login-headline">Detect.<br><span>Respond.</span><br>Keep running.</div>
-  <div class="login-desc">Unlike traditional IDS that only alerts, this system blocks active threats and continues operating under attack — automatically, through Byzantine fault tolerant replication.</div>
+  <div class="logo">🛡 IntrusionTolerant System</div>
+  <div class="headline">Detect.<br><span>Respond.</span><br>Keep running.</div>
+  <div class="desc">Unlike traditional IDS that only alerts, this system blocks active threats and continues operating under attack — automatically, through Byzantine fault tolerant replication.</div>
   <div class="chips">
     <div class="chip">⚡ Brute Force Detection</div>
     <div class="chip">🚫 Auto IP Blacklisting</div>
     <div class="chip">⏱ Rate Limiting</div>
     <div class="chip">📋 Audit Logging</div>
     <div class="chip">🔁 Proactive Recovery</div>
-    <div class="chip">🧬 VM Diversity</div>
+    <div class="chip">👥 User Management</div>
   </div>
 </div>
 <div class="login-right">
-  <div class="login-card">
+  <div class="card">
     <h2>Sign in</h2>
     <p>Access the security dashboard</p>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
     <form method="post" action="{% url 'login' %}">
       {% csrf_token %}
       <label class="lbl">Username</label>
       <input class="inp" name="username" type="text" placeholder="Enter username" autocomplete="username" required>
       <label class="lbl">Password</label>
       <input class="inp" name="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
-      <button class="login-btn" type="submit">Sign in</button>
+      <button class="btn" type="submit">Sign in</button>
     </form>
-    {% if error %}<div class="err">{{ error }}</div>{% endif %}
     <div class="notice">🔒 Protected by automatic IP blacklisting and brute force detection</div>
+    <div class="reg-link">Don't have an account? <a href="{% url 'register' %}">Register here</a></div>
   </div>
 </div>
 </body>

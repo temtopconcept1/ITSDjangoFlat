@@ -1,13 +1,14 @@
 {% extends 'dashboard/base.html' %}
 {% block title %}Login Logs{% endblock %}
 {% block topbar_title %}Login Logs{% endblock %}
-{% block topbar_sub %}Full authentication history with status and source tracking{% endblock %}
-{% block topbar_actions %}<a href="?export=csv" class="btn btn-primary btn-sm">Export CSV</a>{% endblock %}
+{% block topbar_sub %}Full authentication history with IP tracking{% endblock %}
+{% block topbar_actions %}<a href="{% url 'export_csv' 'login_logs' %}" class="btn btn-primary btn-sm">⬇ Export CSV</a>{% endblock %}
 {% block content %}
-<div class="stat-grid cols3">
-  <div class="stat-card"><div class="stat-label">Total Attempts (24h)</div><div class="stat-value c-blue">{{ total_24h }}</div></div>
-  <div class="stat-card"><div class="stat-label">Failed Attempts</div><div class="stat-value c-red">{{ failed_24h }}</div></div>
-  <div class="stat-card"><div class="stat-label">Unique Source IPs</div><div class="stat-value c-yellow">{{ unique_ips }}</div></div>
+<div class="stat-grid cols4">
+  <div class="stat-card s-blue"><div class="stat-label">Total Attempts (24h)</div><div class="stat-value c-blue">{{ total_24h }}</div></div>
+  <div class="stat-card s-red"><div class="stat-label">Failed Attempts</div><div class="stat-value c-red">{{ failed_24h }}</div></div>
+  <div class="stat-card s-yellow"><div class="stat-label">Unique Source IPs</div><div class="stat-value c-yellow">{{ unique_ips }}</div></div>
+  <div class="stat-card s-purple"><div class="stat-label">New IP Alerts</div><div class="stat-value c-purple">{{ new_ip_count }}</div></div>
 </div>
 <div class="card">
   <div class="card-header">
@@ -19,26 +20,30 @@
     </form>
   </div>
   <table>
-    <thead><tr><th>#</th><th>Timestamp</th><th>Username</th><th>Source IP</th><th>Status</th><th>Attempts</th><th>Action Taken</th></tr></thead>
+    <thead><tr><th>#</th><th>Timestamp</th><th>Username</th><th>Source IP</th><th>Status</th><th>Attempts</th><th>New IP?</th><th>Action</th></tr></thead>
     <tbody>
     {% for log in logs %}
     <tr>
       <td class="c-dim">{{ log.id }}</td>
-      <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
-      <td>{{ log.username }}</td>
+      <td style="font-size:11px;">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+      <td style="font-weight:{% if log.status == 'SUCCESS' %}600{% else %}400{% endif %};color:{% if log.status == 'SUCCESS' %}var(--text-hi){% else %}var(--text){% endif %};">{{ log.username }}</td>
       <td><span class="mono">{{ log.ip_address }}</span></td>
       <td>{% if log.status == 'SUCCESS' %}<span class="tag tag-green">SUCCESS</span>{% else %}<span class="tag tag-red">FAILED</span>{% endif %}</td>
-      <td style="font-weight:{% if log.attempts_from_ip >= 8 %}700{% else %}400{% endif %};color:{% if log.attempts_from_ip >= 8 %}var(--red){% elif log.attempts_from_ip >= 4 %}var(--yellow){% else %}var(--text){% endif %}">{{ log.attempts_from_ip }}</td>
+      <td style="font-weight:{% if log.attempts_from_ip >= 5 %}700{% else %}400{% endif %};color:{% if log.attempts_from_ip >= 8 %}var(--red){% elif log.attempts_from_ip >= 4 %}var(--yellow){% else %}var(--text){% endif %};">{{ log.attempts_from_ip }}</td>
+      <td>{% if log.is_new_ip %}<span class="tag tag-yellow">⚠ New</span>{% else %}<span style="color:var(--text-dim);font-size:11px;">—</span>{% endif %}</td>
       <td>
-        {% if log.action == 'BLACKLISTED' %}<span class="tag tag-red">IP Blacklisted</span>
+        {% if log.action == 'BLACKLISTED' %}<span class="tag tag-red">Blacklisted</span>
         {% elif log.action == 'RATE_LIMITED' %}<span class="tag tag-yellow">Rate Limited</span>
         {% elif log.action == 'FLAGGED' %}<span class="tag tag-yellow">Flagged</span>
         {% elif log.action == 'ALLOWED' %}<span class="tag tag-green">Allowed</span>
+        {% elif log.action == 'NEW_IP' %}<span class="tag tag-yellow">New IP</span>
+        {% elif log.action == 'PENDING' %}<span class="tag tag-yellow">Pending</span>
+        {% elif log.action == 'SUSPENDED' %}<span class="tag tag-red">Suspended</span>
         {% else %}<span class="tag tag-gray">Monitored</span>{% endif %}
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:24px">No login attempts recorded yet.</td></tr>
+    <tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:28px;">No login attempts recorded yet.</td></tr>
     {% endfor %}
     </tbody>
   </table>

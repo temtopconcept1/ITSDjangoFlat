@@ -5,7 +5,7 @@
 {% block content %}
 <div class="two-col">
   <div class="card">
-    <div class="card-header"><span class="card-title">Thresholds</span></div>
+    <div class="card-header"><span class="card-title">Configure Thresholds</span></div>
     <div class="card-body">
       <form method="post" action="{% url 'rate_limits_save' %}">
         {% csrf_token %}
@@ -19,32 +19,38 @@
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><span class="card-title">Current Settings</span></div>
+    <div class="card-header"><span class="card-title">Active Configuration</span></div>
     <div class="card-body">
-      <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Active rate limiting configuration:</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">Current rate limiting parameters in effect:</div>
+      {% for label, val, color in rate_display %}
+      <div class="hbar-row">
+        <div class="hbar-label">{{ label }}</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:{{ val }}%;background:{{ color }}"></div></div>
+        <div class="hbar-val">{{ val }}</div>
+      </div>
+      {% endfor %}
       <div class="hbar-row"><div class="hbar-label">Req/Min Limit</div><div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--accent)"></div></div><div class="hbar-val c-blue">{{ rpm }}</div></div>
-      <div class="hbar-row"><div class="hbar-label">Max Failures</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ max_fails|default:5 }}0%;background:var(--red)"></div></div><div class="hbar-val c-red">{{ max_fails }}</div></div>
-      <div class="hbar-row"><div class="hbar-label">Lockout (min)</div><div class="hbar-track"><div class="hbar-fill" style="width:{{ lockout|default:15 }}%;background:var(--yellow)"></div></div><div class="hbar-val c-yellow">{{ lockout }}</div></div>
-      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-      <div style="font-size:11px;color:var(--text-dim);">All changes apply immediately to incoming requests.</div>
+      <div class="hbar-row"><div class="hbar-label">Max Failures</div><div class="hbar-track"><div class="hbar-fill" style="width:50%;background:var(--red)"></div></div><div class="hbar-val c-red">{{ max_fails }}</div></div>
+      <div class="hbar-row"><div class="hbar-label">Lockout (min)</div><div class="hbar-track"><div class="hbar-fill" style="width:30%;background:var(--yellow)"></div></div><div class="hbar-val c-yellow">{{ lockout }}</div></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+      <div style="font-size:11px;color:var(--text-dim);">Changes apply immediately to all incoming requests.</div>
     </div>
   </div>
 </div>
 <div class="card">
   <div class="card-header"><span class="card-title">Rate Limit Events</span></div>
   <table>
-    <thead><tr><th>Time</th><th>IP Address</th><th>Req/Min</th><th>Limit</th><th>Response</th></tr></thead>
+    <thead><tr><th>Time</th><th>IP Address</th><th>Details</th><th>Response</th></tr></thead>
     <tbody>
     {% for e in rate_events %}
     <tr>
-      <td>{{ e.timestamp|date:"H:i:s" }}</td>
+      <td style="font-size:11px;">{{ e.timestamp|date:"d M H:i:s" }}</td>
       <td><span class="mono">{{ e.ip_address }}</span></td>
-      <td class="c-red" style="font-weight:700">{{ e.details|slice:":2" }}</td>
-      <td>{{ rpm }}</td>
+      <td style="font-size:11px;color:var(--text-dim);">{{ e.details }}</td>
       <td><span class="tag tag-yellow">{{ e.response }}</span></td>
     </tr>
     {% empty %}
-    <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:24px">No rate limit events recorded yet.</td></tr>
+    <tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:28px;">No rate limit events recorded yet.</td></tr>
     {% endfor %}
     </tbody>
   </table>

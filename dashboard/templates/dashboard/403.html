@@ -1,0 +1,10 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Access Denied{% endblock %}
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;text-align:center;">
+  <div style="font-size:56px;margin-bottom:16px;">🔒</div>
+  <h2 style="font-size:22px;font-weight:700;color:var(--text-hi);margin-bottom:8px;">Access Denied</h2>
+  <p style="color:var(--text-dim);font-size:14px;max-width:360px;line-height:1.7;">You do not have permission to view this page. This area requires <strong>Administrator</strong> or <strong>Analyst</strong> privileges.</p>
+  <a href="{% url 'dashboard' %}" class="btn btn-primary" style="margin-top:24px;">← Back to Dashboard</a>
+</div>
+{% endblock %}

@@ -2,13 +2,14 @@
 {% block title %}Security Events{% endblock %}
 {% block topbar_title %}Security Events{% endblock %}
 {% block topbar_sub %}Intrusion attempts, anomalies and automated responses{% endblock %}
+{% block topbar_actions %}<a href="{% url 'export_csv' 'events' %}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>{% endblock %}
 {% block content %}
 {% for a in alerts %}
 <div class="alert {% if a.severity == 'CRITICAL' %}alert-crit{% else %}alert-warn{% endif %}">
-  <div class="alert-title" style="color:{% if a.severity == 'CRITICAL' %}var(--red){% else %}var(--yellow){% endif %}">
+  <div class="alert-title" style="color:{% if a.severity == 'CRITICAL' %}var(--red){% else %}var(--yellow){% endif %};">
     {% if a.severity == 'CRITICAL' %}🔴{% else %}🟡{% endif %} {{ a.severity }} — {{ a.event_type }} from {{ a.ip_address }}
   </div>
-  <div class="alert-body">{{ a.details }} · Response: {{ a.response }}</div>
+  <div class="alert-body">{{ a.details }} · Response: {{ a.response }}{% if a.user %} · User: {{ a.user.username }}{% endif %}</div>
 </div>
 {% endfor %}
 <div class="card">
@@ -18,25 +19,26 @@
       <select class="input" name="sev" onchange="this.form.submit()" style="width:140px;">
         <option value="" {% if not sev %}selected{% endif %}>All Severities</option>
         <option value="CRITICAL" {% if sev == 'CRITICAL' %}selected{% endif %}>Critical</option>
-        <option value="WARNING" {% if sev == 'WARNING' %}selected{% endif %}>Warning</option>
-        <option value="INFO" {% if sev == 'INFO' %}selected{% endif %}>Info</option>
+        <option value="WARNING"  {% if sev == 'WARNING'  %}selected{% endif %}>Warning</option>
+        <option value="INFO"     {% if sev == 'INFO'     %}selected{% endif %}>Info</option>
       </select>
     </form>
   </div>
   <table>
-    <thead><tr><th>Time</th><th>Event Type</th><th>Source IP</th><th>Details</th><th>Severity</th><th>Response</th></tr></thead>
+    <thead><tr><th>Time</th><th>Event Type</th><th>Source IP</th><th>User</th><th>Details</th><th>Severity</th><th>Response</th></tr></thead>
     <tbody>
     {% for e in events %}
     <tr>
-      <td>{{ e.timestamp|date:"H:i:s" }}</td>
+      <td style="font-size:11px;">{{ e.timestamp|date:"d M H:i:s" }}</td>
       <td>{{ e.event_type }}</td>
       <td><span class="mono">{{ e.ip_address }}</span></td>
-      <td style="max-width:260px">{{ e.details }}</td>
+      <td style="font-size:11px;">{% if e.user %}{{ e.user.username }}{% else %}—{% endif %}</td>
+      <td style="font-size:11px;color:var(--text-dim);max-width:220px;">{{ e.details|truncatechars:60 }}</td>
       <td>{% if e.severity == 'CRITICAL' %}<span class="tag tag-red">CRITICAL</span>{% elif e.severity == 'WARNING' %}<span class="tag tag-yellow">WARNING</span>{% else %}<span class="tag tag-blue">INFO</span>{% endif %}</td>
-      <td><span class="tag tag-gray">{{ e.response }}</span></td>
+      <td>{% if 'Blacklist' in e.response or 'Block' in e.response %}<span class="tag tag-red">{{ e.response }}</span>{% elif 'Throttl' in e.response or 'Flag' in e.response %}<span class="tag tag-yellow">{{ e.response }}</span>{% elif 'Allow' in e.response or 'Activ' in e.response %}<span class="tag tag-green">{{ e.response }}</span>{% else %}<span class="tag tag-gray">{{ e.response }}</span>{% endif %}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">No security events recorded yet.</td></tr>
+    <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:28px;">No security events recorded yet.</td></tr>
     {% endfor %}
     </tbody>
   </table>

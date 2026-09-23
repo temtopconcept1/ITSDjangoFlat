@@ -1,0 +1,141 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}User Management{% endblock %}
+{% block topbar_title %}User Management{% endblock %}
+{% block topbar_sub %}Register, approve, suspend and manage user access{% endblock %}
+{% block content %}
+
+<div class="stat-grid cols3">
+  <div class="stat-card s-yellow">
+    <div class="stat-label">Pending Approval</div>
+    <div class="stat-value c-yellow">{{ pending_count }}</div>
+    <div class="stat-meta c-dim">Awaiting review</div>
+  </div>
+  <div class="stat-card s-green">
+    <div class="stat-label">Active Users</div>
+    <div class="stat-value c-green">{{ active_count }}</div>
+    <div class="stat-meta c-dim">Can log in</div>
+  </div>
+  <div class="stat-card s-red">
+    <div class="stat-label">Suspended</div>
+    <div class="stat-value c-red">{{ suspended_count }}</div>
+    <div class="stat-meta c-dim">Access blocked</div>
+  </div>
+</div>
+
+<!-- Filter tabs -->
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  <a href="{% url 'user_list' %}" class="btn {% if not status %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">All Users</a>
+  <a href="{% url 'user_list' %}?status=PENDING" class="btn {% if status == 'PENDING' %}btn-warning{% else %}btn-ghost{% endif %} btn-sm">⏳ Pending {% if pending_count %}({{ pending_count }}){% endif %}</a>
+  <a href="{% url 'user_list' %}?status=ACTIVE" class="btn {% if status == 'ACTIVE' %}btn-success{% else %}btn-ghost{% endif %} btn-sm">✅ Active</a>
+  <a href="{% url 'user_list' %}?status=SUSPENDED" class="btn {% if status == 'SUSPENDED' %}btn-danger{% else %}btn-ghost{% endif %} btn-sm">🚫 Suspended</a>
+  <a href="{% url 'user_list' %}?status=REJECTED" class="btn {% if status == 'REJECTED' %}btn-danger{% else %}btn-ghost{% endif %} btn-sm">❌ Rejected</a>
+</div>
+
+{% if pending_count and not status %}
+<div class="alert alert-warn" style="margin-bottom:16px;">
+  <div class="alert-title" style="color:var(--yellow);">⚠ {{ pending_count }} user(s) awaiting approval</div>
+  <div class="alert-body">Review pending registrations below. Users cannot log in until approved.</div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">
+      {% if status %}{{ status|title }} Users{% else %}All Users{% endif %}
+      <span style="color:var(--text-dim);font-weight:400;font-size:12px;margin-left:8px;">({{ users|length }})</span>
+    </span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Department</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Known IPs</th>
+        <th>Registered</th>
+        <th>Last Seen</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for profile in users %}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">{{ profile.initials }}</div>
+          <div>
+            <div style="font-weight:600;color:var(--text-hi);">{{ profile.user.get_full_name|default:profile.user.username }}</div>
+            <div style="font-size:11px;color:var(--text-dim);">{{ profile.user.email }}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--text-dim);">{{ profile.department|default:"—" }}</td>
+      <td>
+        {% if profile.status == 'ACTIVE' %}
+        <form method="post" action="{% url 'user_role' profile.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <select name="role" class="input" style="font-size:11px;padding:3px 6px;" onchange="this.form.submit()">
+            <option value="ADMIN"   {% if profile.role == 'ADMIN' %}selected{% endif %}>Admin</option>
+            <option value="ANALYST" {% if profile.role == 'ANALYST' %}selected{% endif %}>Analyst</option>
+            <option value="VIEWER"  {% if profile.role == 'VIEWER' %}selected{% endif %}>Viewer</option>
+          </select>
+        </form>
+        {% else %}
+          {% if profile.role == 'ADMIN' %}<span class="tag tag-blue">Admin</span>
+          {% elif profile.role == 'ANALYST' %}<span class="tag tag-purple">Analyst</span>
+          {% else %}<span class="tag tag-gray">Viewer</span>{% endif %}
+        {% endif %}
+      </td>
+      <td>
+        {% if profile.status == 'ACTIVE' %}<span class="tag tag-green">Active</span>
+        {% elif profile.status == 'PENDING' %}<span class="tag tag-yellow">Pending</span>
+        {% elif profile.status == 'SUSPENDED' %}<span class="tag tag-red">Suspended</span>
+        {% elif profile.status == 'REJECTED' %}<span class="tag tag-red">Rejected</span>
+        {% endif %}
+      </td>
+      <td>
+        {% for ip in profile.get_known_ips %}
+          <span class="mono" style="display:block;font-size:10px;">{{ ip }}</span>
+        {% empty %}<span style="color:var(--text-dim);">—</span>{% endfor %}
+      </td>
+      <td style="color:var(--text-dim);font-size:11px;">{{ profile.registered_at|date:"d M Y" }}</td>
+      <td style="color:var(--text-dim);font-size:11px;">
+        {% if profile.last_seen %}{{ profile.last_seen|date:"d M H:i" }}{% else %}Never{% endif %}
+      </td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          {% if profile.status == 'PENDING' %}
+            <!-- Approve with role selection -->
+            <form method="post" action="{% url 'user_approve' profile.pk %}" style="display:flex;gap:4px;">
+              {% csrf_token %}
+              <select name="role" class="input" style="font-size:10px;padding:2px 5px;">
+                <option value="VIEWER">Viewer</option>
+                <option value="ANALYST">Analyst</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+              <button class="btn btn-success btn-xs" type="submit">✓ Approve</button>
+            </form>
+            <form method="post" action="{% url 'user_reject' profile.pk %}">{% csrf_token %}<button class="btn btn-danger btn-xs" type="submit" onclick="return confirm('Reject {{ profile.user.username }}?')">✗ Reject</button></form>
+          {% elif profile.status == 'ACTIVE' %}
+            {% if profile.user != request.user %}
+            <form method="post" action="{% url 'user_suspend' profile.pk %}">{% csrf_token %}<button class="btn btn-warning btn-xs" type="submit" onclick="return confirm('Suspend {{ profile.user.username }}?')">⏸ Suspend</button></form>
+            {% endif %}
+          {% elif profile.status == 'SUSPENDED' %}
+            <form method="post" action="{% url 'user_activate' profile.pk %}">{% csrf_token %}<button class="btn btn-success btn-xs" type="submit">▶ Activate</button></form>
+          {% elif profile.status == 'REJECTED' %}
+            <form method="post" action="{% url 'user_approve' profile.pk %}">{% csrf_token %}<input type="hidden" name="role" value="VIEWER"><button class="btn btn-success btn-xs" type="submit">↩ Re-approve</button></form>
+          {% endif %}
+          {% if profile.user != request.user %}
+          <form method="post" action="{% url 'user_delete' profile.pk %}">{% csrf_token %}<button class="btn btn-danger btn-xs" type="submit" onclick="return confirm('Permanently delete {{ profile.user.username }}? This cannot be undone.')">🗑</button></form>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:32px;">No users found for this filter.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
