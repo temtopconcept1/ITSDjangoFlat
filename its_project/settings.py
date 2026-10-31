@@ -54,6 +54,9 @@ DATABASES = {
         ssl_require=bool(os.environ.get('DATABASE_URL')),
     )
 }
+if os.environ.get('DATABASE_URL'):
+    # Neon's pooled endpoint (pgbouncer) needs server-side cursors off
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 AUTH_PASSWORD_VALIDATORS = []
 LANGUAGE_CODE = 'en-us'
