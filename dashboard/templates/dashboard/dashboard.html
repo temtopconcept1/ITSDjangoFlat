@@ -1,7 +1,7 @@
 {% extends 'dashboard/base.html' %}
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Security Dashboard{% endblock %}
-{% block topbar_sub %}Real-time intrusion monitoring · Auto-refreshes every 30 seconds{% endblock %}
+{% block topbar_sub %}Real-time intrusion monitoring · All times in Nigeria time (WAT) · <span id="lagos-clock" style="font-family:var(--mono)"></span>{% endblock %}
 {% block topbar_actions %}
   {% if pending_users %}<a href="{% url 'user_list' %}?status=PENDING" class="btn btn-warning btn-sm">⚠ {{ pending_users }} Pending Approval</a>{% endif %}
   <a href="{% url 'reports' %}" class="btn btn-ghost btn-sm">📄 Reports</a>
@@ -41,16 +41,26 @@
 <div class="chart-row">
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Login Attempts — Last 7 Days</span>
-      <div class="chart-legend">
-        <div class="legend-dot"><div class="dot" style="background:#3b82f6"></div>Successful</div>
-        <div class="legend-dot"><div class="dot" style="background:#ef4444"></div>Failed / Blocked</div>
+      <span class="card-title" id="chart-title">Login Attempts — Last 7 Days</span>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-primary btn-xs" id="rng-7d"  onclick="setRange('7d')">7 days</button>
+          <button class="btn btn-ghost btn-xs"   id="rng-24h" onclick="setRange('24h')">24 hours</button>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-dot"><div class="dot" style="background:#3b82f6"></div>Successful</div>
+          <div class="legend-dot"><div class="dot" style="background:#ef4444"></div>Failed</div>
+        </div>
       </div>
     </div>
     <div class="card-body">
       <div style="position:relative;height:180px;">
         <canvas id="loginChart"></canvas>
+        <div id="chart-empty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;color:var(--text-dim);font-size:12px;line-height:1.7;">
+          No login activity in this period yet.<br>Sign in or try a wrong password and it will appear here.
+        </div>
       </div>
+      <div id="chart-summary" style="margin-top:10px;font-size:11px;color:var(--text-dim);"></div>
     </div>
   </div>
   <div class="card">
@@ -117,101 +127,69 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-// ── CHART ─────────────────────────────────────────────────────────
-let loginChart = null;
+let loginChart = null, currentRange = '7d';
+
+// Live clock, always Nigeria time
+function tickClock() {
+  const el = document.getElementById('lagos-clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-GB', {timeZone:'Africa/Lagos', hour12:false}) + ' WAT';
+}
+tickClock(); setInterval(tickClock, 1000);
+
+function setRange(r) {
+  currentRange = r;
+  document.getElementById('rng-7d').className  = 'btn btn-xs ' + (r === '7d'  ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('rng-24h').className = 'btn btn-xs ' + (r === '24h' ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('chart-title').textContent = r === '7d' ? 'Login Attempts — Last 7 Days' : 'Login Attempts — Last 24 Hours';
+  loadChart();
+}
 
 async function loadChart() {
-  const res  = await fetch('/api/chart/');
+  const res  = await fetch('/api/chart/?range=' + currentRange, {cache:'no-store'});
   const json = await res.json();
   const data = json.data;
+  const okData = data.map(d => d.ok), failData = data.map(d => d.fail);
 
-  // Fallback demo data when DB is empty
-  const demoOk   = [78, 102, 65, 134, 88, 110, 120];
-  const demoFail = [22,  38, 18,  52, 96,  44,  57];
-
-  const labels   = data.map(d => d.day);
-  const okData   = data.map((d,i) => d.ok   > 0 ? d.ok   : demoOk[i]);
-  const failData = data.map((d,i) => d.fail > 0 ? d.fail : demoFail[i]);
-
-  const ctx = document.getElementById('loginChart').getContext('2d');
+  document.getElementById('chart-empty').style.display = (json.total_ok + json.total_fail) === 0 ? 'flex' : 'none';
+  document.getElementById('chart-summary').textContent =
+    json.total_ok + ' successful · ' + json.total_fail + ' failed · ' + json.timezone + ' · as of ' + json.now;
 
   if (loginChart) loginChart.destroy();
-
-  loginChart = new Chart(ctx, {
+  loginChart = new Chart(document.getElementById('loginChart').getContext('2d'), {
     type: 'bar',
     data: {
-      labels,
+      labels: data.map(d => d.day),
       datasets: [
-        {
-          label: 'Successful',
-          data: okData,
-          backgroundColor: 'rgba(59,130,246,0.85)',
-          hoverBackgroundColor: 'rgba(59,130,246,1)',
-          borderRadius: 4,
-          borderSkipped: false,
-          barPercentage: 0.6,
-          categoryPercentage: 0.75,
-        },
-        {
-          label: 'Failed / Blocked',
-          data: failData,
-          backgroundColor: 'rgba(239,68,68,0.85)',
-          hoverBackgroundColor: 'rgba(239,68,68,1)',
-          borderRadius: 4,
-          borderSkipped: false,
-          barPercentage: 0.6,
-          categoryPercentage: 0.75,
-        }
+        { label:'Successful', data: okData,   backgroundColor:'rgba(59,130,246,0.85)', hoverBackgroundColor:'#3b82f6', borderRadius:4, borderSkipped:false, barPercentage:0.7, categoryPercentage:0.8 },
+        { label:'Failed',     data: failData, backgroundColor:'rgba(239,68,68,0.85)',  hoverBackgroundColor:'#ef4444', borderRadius:4, borderSkipped:false, barPercentage:0.7, categoryPercentage:0.8 }
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1a2236',
-          borderColor: '#1f2d45',
-          borderWidth: 1,
-          titleColor: '#e8edf8',
-          bodyColor: '#c8d3e8',
-          padding: 10,
-          callbacks: {
-            title: (items) => data[items[0].dataIndex]?.date || items[0].label,
-          }
-        }
+      responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{ backgroundColor:'#1a2236', borderColor:'#1f2d45', borderWidth:1, titleColor:'#e8edf8', bodyColor:'#c8d3e8', padding:10,
+          callbacks:{ title: items => data[items[0].dataIndex].date } }
       },
-      scales: {
-        x: {
-          grid: { color: 'rgba(31,45,69,0.5)', drawBorder: false },
-          ticks: { color: '#6b7a99', font: { size: 11 } },
-          border: { display: false }
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(31,45,69,0.5)', drawBorder: false },
-          ticks: { color: '#6b7a99', font: { size: 11 }, maxTicksLimit: 5, precision: 0 },
-          border: { display: false }
-        }
+      scales:{
+        x:{ grid:{color:'rgba(31,45,69,0.5)'}, ticks:{color:'#6b7a99', font:{size:11}, maxRotation:0, autoSkip:true}, border:{display:false} },
+        y:{ beginAtZero:true, grid:{color:'rgba(31,45,69,0.5)'}, ticks:{color:'#6b7a99', font:{size:11}, maxTicksLimit:5, precision:0}, border:{display:false} }
       }
     }
   });
 }
 
-// ── LIVE STAT REFRESH ─────────────────────────────────────────────
 async function refreshStats() {
   try {
-    const res  = await fetch('/api/stats/');
-    const data = await res.json();
-    document.getElementById('s-total').textContent   = data.total_attempts.toLocaleString();
-    document.getElementById('s-failed').textContent  = data.failed_attempts.toLocaleString();
-    document.getElementById('s-blocked').textContent = data.blacklisted_count.toLocaleString();
-    document.getElementById('s-sessions').textContent= data.active_sessions.toLocaleString();
-    document.getElementById('s-pending').textContent = data.pending_users.toLocaleString();
-    // Reload chart every refresh too
+    const d = await (await fetch('/api/stats/', {cache:'no-store'})).json();
+    document.getElementById('s-total').textContent    = d.total_attempts.toLocaleString();
+    document.getElementById('s-failed').textContent   = d.failed_attempts.toLocaleString();
+    document.getElementById('s-blocked').textContent  = d.blacklisted_count.toLocaleString();
+    document.getElementById('s-sessions').textContent = d.active_sessions.toLocaleString();
+    document.getElementById('s-pending').textContent  = d.pending_users.toLocaleString();
     await loadChart();
-  } catch(e) { console.warn('Stats refresh failed', e); }
+  } catch(e) { console.warn('refresh failed', e); }
 }
 
 loadChart();

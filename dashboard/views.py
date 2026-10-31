@@ -239,15 +239,41 @@ def dashboard(request):
 
 @login_required
 def api_chart(request):
-    now = timezone.now()
+    """Login attempts bucketed by Lagos (WAT) calendar day or hour, from real DB records."""
+    from django.db.models.functions import TruncDay, TruncHour
+    rng  = request.GET.get('range', '7d')
+    tz   = timezone.get_current_timezone()          # Africa/Lagos
+    now  = timezone.localtime()
+    if rng == '24h':
+        end     = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        starts  = [end - timedelta(hours=24 - i) for i in range(24)]
+        trunc   = TruncHour('timestamp', tzinfo=tz)
+        fmt     = lambda d: (d.strftime('%H:00'), d.strftime('%d %b, %H:00') + ' WAT')
+        range_start, range_end = starts[0], end
+    else:
+        today   = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        starts  = [today - timedelta(days=6 - i) for i in range(7)]
+        trunc   = TruncDay('timestamp', tzinfo=tz)
+        fmt     = lambda d: (d.strftime('%a'), d.strftime('%a %d %b'))
+        range_start, range_end = starts[0], today + timedelta(days=1)
+
+    rows = (LoginAttempt.objects
+            .filter(timestamp__gte=range_start, timestamp__lt=range_end)
+            .annotate(b=trunc).values('b')
+            .annotate(ok=Count('id', filter=Q(status='SUCCESS')),
+                      fail=Count('id', filter=Q(status='FAILED'))))
+    found = {r['b']: r for r in rows}
+
     data = []
-    for i in range(6,-1,-1):
-        s = now - timedelta(days=i+1)
-        e = now - timedelta(days=i)
-        ok   = LoginAttempt.objects.filter(timestamp__gte=s, timestamp__lt=e, status='SUCCESS').count()
-        fail = LoginAttempt.objects.filter(timestamp__gte=s, timestamp__lt=e, status='FAILED').count()
-        data.append({'day': s.strftime('%a'), 'date': s.strftime('%d %b'), 'ok': ok, 'fail': fail})
-    return JsonResponse({'data': data})
+    for st in starts:
+        r = found.get(st, {})
+        label, full = fmt(st)
+        data.append({'day': label, 'date': full, 'ok': r.get('ok', 0), 'fail': r.get('fail', 0)})
+    return JsonResponse({
+        'data': data, 'range': rng, 'timezone': 'WAT (UTC+1)',
+        'now': now.strftime('%d %b %Y, %H:%M:%S'),
+        'total_ok': sum(d['ok'] for d in data), 'total_fail': sum(d['fail'] for d in data),
+    })
 
 
 @login_required
@@ -601,7 +627,7 @@ def export_csv(request, model):
     if model == 'login_logs':
         writer.writerow(['ID','Timestamp','Username','IP Address','Status','Action','Attempts'])
         for r in LoginAttempt.objects.all()[:1000]:
-            writer.writerow([r.id, r.timestamp, r.username, r.ip_address, r.status, r.action, r.attempts_from_ip])
+            writer.writerow([r.id, timezone.localtime(r.timestamp).strftime('%Y-%m-%d %H:%M:%S'), r.username, r.ip_address, r.status, r.action, r.attempts_from_ip])
     elif model == 'blacklist':
         writer.writerow(['IP Address','Reason','Failed Attempts','Blocked At','Expires','Source'])
         for r in BlacklistedIP.objects.all():
@@ -609,11 +635,11 @@ def export_csv(request, model):
     elif model == 'events':
         writer.writerow(['Timestamp','Event Type','IP Address','Details','Severity','Response'])
         for r in SecurityEvent.objects.all()[:1000]:
-            writer.writerow([r.timestamp, r.event_type, r.ip_address, r.details, r.severity, r.response])
+            writer.writerow([timezone.localtime(r.timestamp).strftime('%Y-%m-%d %H:%M:%S'), r.event_type, r.ip_address, r.details, r.severity, r.response])
     elif model == 'audit':
         writer.writerow(['Timestamp','Level','Module','Message','Performed By'])
         for r in AuditLog.objects.all()[:1000]:
-            writer.writerow([r.timestamp, r.level, r.module, r.message, r.performed_by or ''])
+            writer.writerow([timezone.localtime(r.timestamp).strftime('%Y-%m-%d %H:%M:%S'), r.level, r.module, r.message, r.performed_by or ''])
     return response
 
 @login_required
@@ -633,7 +659,7 @@ def export_pdf(request):
     week_ago = now - timedelta(days=7)
 
     story.append(Paragraph("IntrusionTolerant System — Security Report", styles['Title']))
-    story.append(Paragraph(f"Generated: {now.strftime('%Y-%m-%d %H:%M UTC')}", styles['Normal']))
+    story.append(Paragraph(f"Generated: {timezone.localtime(now).strftime('%Y-%m-%d %H:%M WAT')}", styles['Normal']))
     story.append(Spacer(1, 0.5*cm))
     story.append(Paragraph("Weekly Summary", styles['Heading2']))
 
@@ -662,7 +688,7 @@ def export_pdf(request):
     story.append(Paragraph("Recent Security Events", styles['Heading2']))
     ev_data = [['Time','Event Type','IP Address','Severity','Response']]
     for e in SecurityEvent.objects.all()[:15]:
-        ev_data.append([e.timestamp.strftime('%Y-%m-%d %H:%M'), e.event_type, e.ip_address, e.severity, e.response])
+        ev_data.append([timezone.localtime(e.timestamp).strftime('%Y-%m-%d %H:%M'), e.event_type, e.ip_address, e.severity, e.response])
     t2 = Table(ev_data, colWidths=[3.5*cm,4*cm,3.5*cm,2.5*cm,3*cm])
     t2.setStyle(TableStyle([
         ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#1F3A8C')),
