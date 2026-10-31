@@ -45,11 +45,14 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = 'its_project.wsgi.application'
 
+# Persistent database: uses DATABASE_URL (Postgres) when set, SQLite locally.
+import dj_database_url
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        ssl_require=bool(os.environ.get('DATABASE_URL')),
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = []

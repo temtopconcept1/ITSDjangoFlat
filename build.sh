@@ -78,7 +78,6 @@ if SecurityEvent.objects.count() == 0:
         ('Brute Force','45.155.205.233','8 failures in 2 minutes','CRITICAL','Auto-Blacklisted',15),
         ('Scan Detected','194.165.16.78','47 paths probed in 15 seconds','CRITICAL','Blocked',25),
         ('New IP Login','197.210.85.14','Admin logged in from new IP address','WARNING','Flagged',40),
-        ('New Registration','10.0.0.5','User analyst1 registered — pending approval','INFO','Awaiting Approval',60),
     ]:
         SecurityEvent.objects.create(event_type=etype, ip_address=ip,
             details=details, severity=sev, response=resp,
@@ -118,16 +117,6 @@ if AuditLog.objects.count() == 0:
         AuditLog.objects.create(level=level, module=module, message=msg,
             performed_by=admin, timestamp=now - timedelta(minutes=mins))
     print('Seeded audit logs')
-
-# ── DEMO PENDING USER ─────────────────────────────────────────────
-if not User.objects.filter(username='analyst1').exists():
-    u2 = User.objects.create_user(
-        'analyst1', 'analyst1@company.com', 'Pass1234!',
-        first_name='Sarah', last_name='Analyst', is_active=False
-    )
-    UserProfile.objects.create(user=u2, role='VIEWER', status='PENDING',
-        department='Security Operations', known_ips='10.0.0.5')
-    print('Demo pending user created: analyst1 (awaiting admin approval)')
 
 print('All setup complete.')
 PYEOF
